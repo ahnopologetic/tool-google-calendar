@@ -1,5 +1,7 @@
 import yaml
 from typing import Dict, Any
+import os
+
 
 class Config:
     """
@@ -25,11 +27,33 @@ class Config:
         """
         try:
             with open(self.config_path, "r") as file:
-                return yaml.safe_load(file)
+                config = yaml.safe_load(file)
+                return self._interpolate_env_vars(config)
         except FileNotFoundError:
-            raise FileNotFoundError(f"Configuration file not found at {self.config_path}")
+            raise FileNotFoundError(
+                f"Configuration file not found at {self.config_path}"
+            )
         except yaml.YAMLError as e:
             raise ValueError(f"Error parsing YAML configuration: {e}")
+
+    def _interpolate_env_vars(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Recursively interpolates environment variables in the configuration dictionary.
+
+        Args:
+            config: The configuration dictionary.
+
+        Returns:
+            The configuration dictionary with environment variables interpolated.
+        """
+        if isinstance(config, dict):
+            return {k: self._interpolate_env_vars(v) for k, v in config.items()}
+        elif isinstance(config, list):
+            return [self._interpolate_env_vars(i) for i in config]
+        elif isinstance(config, str):
+            return os.path.expandvars(config)
+        else:
+            return config
 
     def get_tool_config(self, tool_name: str) -> Dict[str, Any]:
         """
@@ -75,5 +99,7 @@ class Config:
         tool_config = self.get_tool_config(tool_name)
         default_calendar_id = tool_config.get("default", {}).get("calendar_id")
         if not default_calendar_id:
-            raise ValueError(f"Default calendar ID not specified for tool '{tool_name}'.")
+            raise ValueError(
+                f"Default calendar ID not specified for tool '{tool_name}'."
+            )
         return default_calendar_id
