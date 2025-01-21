@@ -4,7 +4,6 @@ import json
 from src import GoogleCalendar  # Assuming this is your tool
 
 
-
 # Mock the OpenAI API response
 @pytest.fixture
 def mock_openai_chatcompletion():
@@ -13,7 +12,7 @@ def mock_openai_chatcompletion():
 
 
 # Test successful function call
-def test_successful_function_call(mock_openai_chatcompletion):
+def test_successful_function_call(mock_openai_chatcompletion, google_calendar_credential_path):
     # Mock the API response to simulate a function call
     mock_openai_chatcompletion.return_value = {
         "choices": [
@@ -37,7 +36,7 @@ def test_successful_function_call(mock_openai_chatcompletion):
     }
 
     # Create an instance of your Google Calendar tool
-    calendar_tool = GoogleCalendar()
+    calendar_tool = GoogleCalendar(config_path="tests/data/tools.yaml")
 
     # Define the available functions
     available_functions = {
@@ -75,7 +74,7 @@ def test_successful_function_call(mock_openai_chatcompletion):
 
 
 # Test error handling
-def test_function_call_error_handling(mock_openai_chatcompletion):
+def test_function_call_error_handling(mock_openai_chatcompletion, google_calendar_credential_path):
     # Mock the API response to simulate a function call with invalid arguments
     mock_openai_chatcompletion.return_value = {
         "choices": [
@@ -93,7 +92,7 @@ def test_function_call_error_handling(mock_openai_chatcompletion):
     }
 
     # Create an instance of your Google Calendar tool
-    calendar_tool = GoogleCalendar()
+    calendar_tool = GoogleCalendar(config_path="tests/data/tools.yaml")
 
     # Define the available functions
     available_functions = {

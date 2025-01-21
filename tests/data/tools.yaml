@@ -1,0 +1,9 @@
+version: 1
+tools:
+  google-calendar:
+    credential:
+      path: ${GOOGLE_CALENDAR_CREDENTIAL_JSON}
+    scope:
+      - "https://www.googleapis.com/auth/calendar"
+    default:
+      calendar_id: primary

@@ -1,13 +1,16 @@
 [project]
 name = "tool-google-calendar"
 version = "0.1.0"
-description = ""
+description = "Ahnopologetic tools - Google Calendar"
 authors = [
     {name = "ahnopologetic", email = "stahn1995@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "pyyaml (>=6.0.2,<7.0.0)",
 ]
 
 
