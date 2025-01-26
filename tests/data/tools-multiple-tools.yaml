@@ -1,0 +1,15 @@
+version: 1
+tools:
+  some-other-tool:
+    credential: "some-other-credential"
+    scope:
+      - "https://www.googleapis.com/auth/calendar"
+    default:
+      default_key: default_value
+  google-calendar:
+    credential: 
+      path: ${GOOGLE_CALENDAR_CREDENTIAL_JSON}
+    scope:
+      - "https://www.googleapis.com/auth/calendar"
+    default:
+      calendar_id: primary

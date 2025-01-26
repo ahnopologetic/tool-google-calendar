@@ -1,3 +1,4 @@
+import json
 import yaml
 from typing import Dict, Any
 import os
@@ -70,7 +71,7 @@ class Config:
             raise ValueError(f"Configuration for tool '{tool_name}' not found.")
         return tools[tool_name]
 
-    def get_credential_path(self, tool_name: str) -> str:
+    def get_credential_path(self, tool_name: str) -> str | None:
         """
         Retrieves the credential path for a specific tool.
 
@@ -83,8 +84,25 @@ class Config:
         tool_config = self.get_tool_config(tool_name)
         credential_path = tool_config.get("credential", {}).get("path")
         if not credential_path:
-            raise ValueError(f"Credential path not specified for tool '{tool_name}'.")
+            return
         return credential_path
+
+    def get_credential_value(self, tool_name: str) -> Dict[str, Any] | None:
+        """
+        Retrieves the credentials value for a specific tool.
+
+        Args:
+            tool_name: The name of the tool.
+
+        Returns:
+            The credentials value for the tool. (optional)
+        """
+        tool_config = self.get_tool_config(tool_name)
+        credentials_value_str = tool_config.get("credential", {}).get("value")
+        if not credentials_value_str:
+            return None
+
+        return json.loads(credentials_value_str)
 
     def get_default_calendar_id(self, tool_name: str) -> str:
         """

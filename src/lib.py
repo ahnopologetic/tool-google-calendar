@@ -1,13 +1,17 @@
 from datetime import datetime
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
+
+from src.utils import function_to_schema, parse_datetime
 from .config import Config
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
 class GoogleCalendar:
-    def __init__(self, config_path: str = "tools.yaml", tool_name: str = "google-calendar"):
+    def __init__(
+        self, config_path: str = "tools.yaml", tool_name: str = "google-calendar"
+    ):
         """
         Initializes the GoogleCalendar tool with user credentials and builds the service object.
 
@@ -17,12 +21,17 @@ class GoogleCalendar:
         """
         config = Config(config_path)
         self.tool_config = config.get_tool_config(tool_name)
+        self.credentials_value = config.get_credential_value(tool_name)
         self.credentials_path = config.get_credential_path(tool_name)
         self.default_calendar_id = config.get_default_calendar_id(tool_name)
-        self.credentials = self._load_credentials(self.credentials_path)
+        self.credentials = self._load_credentials(
+            self.credentials_path, credential_value=self.credentials_value
+        )
         self.service = build("calendar", "v3", credentials=self.credentials)
 
-    def _load_credentials(self, credentials_path: str) -> Credentials:
+    def _load_credentials(
+        self, credentials_path: str | None, credential_value: dict | None = None
+    ) -> Credentials:
         """
         Loads user credentials from a file.
 
@@ -32,16 +41,20 @@ class GoogleCalendar:
         Returns:
             Google OAuth2 credentials.
         """
-        # Replace this with your actual credential loading logic
-        # This is a placeholder for demonstration purposes
-        creds = Credentials.from_authorized_user_file(credentials_path, SCOPES)
+        if not credentials_path and not credential_value:
+            raise ValueError("No credentials provided.")
+
+        if credential_value:
+            creds = Credentials.from_authorized_user_info(credential_value, SCOPES)
+        else:
+            creds = Credentials.from_authorized_user_file(credentials_path, SCOPES)
         return creds
 
     def create_event(
         self,
         summary: str,
-        start_time: datetime,
-        end_time: datetime,
+        start_time: str,
+        end_time: str,
         description: str = None,
         location: str = None,
     ) -> str:
@@ -50,30 +63,35 @@ class GoogleCalendar:
 
         Args:
             summary: The title of the event.
-            start_time: The start time of the event (datetime object).
-            end_time: The end time of the event (datetime object).
+            start_time: The start time of the event.
+            end_time: The end time of the event.
             description: The description of the event (optional).
             location: The location of the event (optional).
 
         Returns:
             The ID of the created event.
         """
+        start_time_dt = parse_datetime(start_time)
+        end_time_dt = parse_datetime(end_time)
+
         event = {
             "summary": summary,
             "location": location,
             "description": description,
             "start": {
-                "dateTime": start_time.isoformat(),
+                "dateTime": start_time_dt.isoformat(),
                 "timeZone": "America/Los_Angeles",  # Replace with your timezone
             },
             "end": {
-                "dateTime": end_time.isoformat(),
+                "dateTime": end_time_dt.isoformat(),
                 "timeZone": "America/Los_Angeles",  # Replace with your timezone
             },
         }
 
         created_event = (
-            self.service.events().insert(calendarId=self.default_calendar_id, body=event).execute()
+            self.service.events()
+            .insert(calendarId=self.default_calendar_id, body=event)
+            .execute()
         )
         return created_event.get("id")
 
@@ -113,7 +131,9 @@ class GoogleCalendar:
             The event details.
         """
         event = (
-            self.service.events().get(calendarId=self.default_calendar_id, eventId=event_id).execute()
+            self.service.events()
+            .get(calendarId=self.default_calendar_id, eventId=event_id)
+            .execute()
         )
         return event
 
@@ -121,8 +141,8 @@ class GoogleCalendar:
         self,
         event_id: str,
         summary: str = None,
-        start_time: datetime = None,
-        end_time: datetime = None,
+        start_time: str = None,
+        end_time: str = None,
         description: str = None,
         location: str = None,
     ) -> dict:
@@ -141,15 +161,19 @@ class GoogleCalendar:
             The updated event details.
         """
         event = (
-            self.service.events().get(calendarId=self.default_calendar_id, eventId=event_id).execute()
+            self.service.events()
+            .get(calendarId=self.default_calendar_id, eventId=event_id)
+            .execute()
         )
 
         if summary:
             event["summary"] = summary
         if start_time:
-            event["start"]["dateTime"] = start_time.isoformat()
+            start_time_dt = parse_datetime(start_time)
+            event["start"]["dateTime"] = start_time_dt.isoformat()
         if end_time:
-            event["end"]["dateTime"] = end_time.isoformat()
+            end_time_dt = parse_datetime(end_time)
+            event["end"]["dateTime"] = end_time_dt.isoformat()
         if description:
             event["description"] = description
         if location:
@@ -169,7 +193,9 @@ class GoogleCalendar:
         Args:
             event_id: The ID of the event to delete.
         """
-        self.service.events().delete(calendarId=self.default_calendar_id, eventId=event_id).execute()
+        self.service.events().delete(
+            calendarId=self.default_calendar_id, eventId=event_id
+        ).execute()
 
     @property
     def functions(self):
@@ -177,120 +203,7 @@ class GoogleCalendar:
         Returns the list of available functions in a format suitable for OpenAI's API.
         """
         return [
-            {
-                "name": "google_calendar_create_event",
-                "description": "Creates a new event in the user's Google Calendar.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "summary": {
-                            "type": "string",
-                            "description": "The title of the event.",
-                        },
-                        "start_time": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The start time of the event (ISO 8601 format).",
-                        },
-                        "end_time": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The end time of the event (ISO 8601 format).",
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "The description of the event.",
-                        },
-                        "location": {
-                            "type": "string",
-                            "description": "The location of the event.",
-                        },
-                    },
-                    "required": ["summary", "start_time", "end_time"],
-                },
-            },
-            {
-                "name": "google_calendar_get_events",
-                "description": "Retrieves events from the user's Google Calendar within a specified time range.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "time_min": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The minimum time (inclusive) for events to be retrieved (ISO 8601 format).",
-                        },
-                        "time_max": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The maximum time (exclusive) for events to be retrieved (ISO 8601 format).",
-                        },
-                    },
-                    "required": ["time_min", "time_max"],
-                },
-            },
-            {
-                "name": "google_calendar_get_event",
-                "description": "Retrieves a specific event from the user's Google Calendar by its ID.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "event_id": {
-                            "type": "string",
-                            "description": "The ID of the event to retrieve.",
-                        },
-                    },
-                    "required": ["event_id"],
-                },
-            },
-            {
-                "name": "google_calendar_update_event",
-                "description": "Updates an existing event in the user's Google Calendar.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "event_id": {
-                            "type": "string",
-                            "description": "The ID of the event to update.",
-                        },
-                        "summary": {
-                            "type": "string",
-                            "description": "The new title of the event.",
-                        },
-                        "start_time": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The new start time of the event (ISO 8601 format).",
-                        },
-                        "end_time": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "The new end time of the event (ISO 8601 format).",
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "The new description of the event.",
-                        },
-                        "location": {
-                            "type": "string",
-                            "description": "The new location of the event.",
-                        },
-                    },
-                    "required": ["event_id"],
-                },
-            },
-            {
-                "name": "google_calendar_delete_event",
-                "description": "Deletes an event from the user's Google Calendar by its ID.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "event_id": {
-                            "type": "string",
-                            "description": "The ID of the event to delete.",
-                        },
-                    },
-                    "required": ["event_id"],
-                },
-            },
+            function_to_schema(getattr(self, method))
+            for method in dir(GoogleCalendar)
+            if callable(getattr(GoogleCalendar, method)) and not method.startswith("_")
         ]
