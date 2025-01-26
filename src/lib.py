@@ -50,21 +50,30 @@ class GoogleCalendar:
             creds = Credentials.from_authorized_user_file(credentials_path, SCOPES)
         return creds
 
+    def get_current_datetime_utc(self) -> str:
+        """
+        Retrieves the current date and time in UTC.
+
+        Returns:
+            The current date and time in UTC as a string.
+        """
+        return datetime.now().isoformat()
+
     def create_event(
         self,
         summary: str,
         start_time: str,
         end_time: str,
-        description: str = None,
-        location: str = None,
+        description: str | None = None,
+        location: str | None = None,
     ) -> str:
         """
         Creates a new event in the user's primary calendar.
 
         Args:
             summary: The title of the event.
-            start_time: The start time of the event.
-            end_time: The end time of the event.
+            start_time: The start time of the event as a string.
+            end_time: The end time of the event as a string.
             description: The description of the event (optional).
             location: The location of the event (optional).
 
@@ -93,25 +102,28 @@ class GoogleCalendar:
             .insert(calendarId=self.default_calendar_id, body=event)
             .execute()
         )
-        return created_event.get("id")
+        return created_event["id"]
 
-    def get_events(self, time_min: datetime, time_max: datetime) -> list:
+    def get_events(self, time_min: str, time_max: str) -> list:
         """
         Retrieves events within a specified time range.
 
         Args:
-            time_min: The minimum time (inclusive) for events to be retrieved.
-            time_max: The maximum time (exclusive) for events to be retrieved.
+            time_min: The minimum time (inclusive) for events to be retrieved as a string.
+            time_max: The maximum time (exclusive) for events to be retrieved as a string.
 
         Returns:
             A list of events.
         """
+        time_min_dt = parse_datetime(time_min)
+        time_max_dt = parse_datetime(time_max)
+
         events_result = (
             self.service.events()
             .list(
                 calendarId=self.default_calendar_id,
-                timeMin=time_min.isoformat() + "Z",
-                timeMax=time_max.isoformat() + "Z",
+                timeMin=time_min_dt.isoformat() + "Z",
+                timeMax=time_max_dt.isoformat() + "Z",
                 singleEvents=True,
                 orderBy="startTime",
             )
@@ -140,11 +152,11 @@ class GoogleCalendar:
     def update_event(
         self,
         event_id: str,
-        summary: str = None,
-        start_time: str = None,
-        end_time: str = None,
-        description: str = None,
-        location: str = None,
+        summary: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
+        description: str | None = None,
+        location: str | None = None,
     ) -> dict:
         """
         Updates an existing event.
@@ -152,8 +164,8 @@ class GoogleCalendar:
         Args:
             event_id: The ID of the event to update.
             summary: The new title of the event (optional).
-            start_time: The new start time of the event (optional).
-            end_time: The new end time of the event (optional).
+            start_time: The new start time of the event as a string (optional).
+            end_time: The new end time of the event as a string (optional).
             description: The new description of the event (optional).
             location: The new location of the event (optional).
 

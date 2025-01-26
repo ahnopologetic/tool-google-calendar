@@ -84,7 +84,8 @@ class Config:
         tool_config = self.get_tool_config(tool_name)
         credential_path = tool_config.get("credential", {}).get("path")
         if not credential_path:
-            return
+            return None
+
         return credential_path
 
     def get_credential_value(self, tool_name: str) -> Dict[str, Any] | None:
